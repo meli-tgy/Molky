@@ -166,8 +166,9 @@
 
       const UP = new CANNON.Vec3(0, 1, 0);
       const tmp = new CANNON.Vec3();
-      const BASE_LOCAL = new CANNON.Vec3(-PIN_COM_X, PIN_HM - PIN_COM_Y, 0);   // centre de la base, repère quille
-      const TOP_LOCAL = new CANNON.Vec3(-PIN_COM_X, PIN_HM - PIN_COM_Y, 0);
+      // Repère quille (origine = centre de gravité) : centre de la base et centre de la face biseautée
+      const BASE_LOCAL = new CANNON.Vec3(-PIN_COM_X, -PIN_COM_Y, 0);            // centre de la base, repère quille
+      const TOP_LOCAL  = new CANNON.Vec3(-PIN_COM_X, PIN_HM - PIN_COM_Y, 0);    // centre de la face biseautée, repère quille
 
       // Forme physique de la quille : cylindre à sommet biseauté, centré sur son centre de gravité
       function makePinShape() {
@@ -288,9 +289,10 @@
         return { x: b.position.x + w.x, z: b.position.z + w.z };
       }
 
-      function tipPos(b){
+      // Centre de la face biseautée (le haut de la quille), projeté au sol
+      function tipPos(b) {
         const w = b.quaternion.vmult(TOP_LOCAL, tmp);
-        return {x: b.position.x + w.x, z: b.position.z +w.z};
+        return { x: b.position.x + w.x, z: b.position.z + w.z };
       }
 
       // Position / orientation d'une quille debout dont la base est en (x, z)
@@ -311,7 +313,7 @@
         return true;
       }
 
-      // Calcule où relever les quilles tombées : à l'endroit de leur base,
+      // Calcule où relever les quilles tombées : à l'endroit de leur haut,
       // en les écartant juste assez si deux bases se chevauchent.
       function planRaise(pins) {
         const MIN_D = 2 * PIN_R + 0.004;
@@ -797,7 +799,7 @@
         $('actionMsg').textContent = 'Les quilles se relèvent dans quelques secondes…';
       },
 
-      // ----- 3. Relever les quilles là où leur base est tombée -----
+      // ----- 3. Relever les quilles là où leur haut est tombé -----
       startRaise() {
         // La barre ne doit plus rien toucher pendant qu'on relève les quilles
         PHYS.setStickHeld(this.body, true);
@@ -806,7 +808,7 @@
         this.raise = [];
         pins.forEach((p, i) => {
           if (!p.fallen) return;
-          // Relevée à l'endroit de sa base, numéro tourné vers les joueurs
+          // Relevée à l'endroit calculé, numéro tourné vers les joueurs
           const x = targets[i].x, z = targets[i].z, yaw = PHYS.PIN_FACE_YAW;
           const pose = PHYS.standingPose(x, z, yaw);
           const to = new THREE.Vector3(pose.pos.x, pose.pos.y, pose.pos.z);
