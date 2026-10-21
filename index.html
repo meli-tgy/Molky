@@ -167,6 +167,7 @@
       const UP = new CANNON.Vec3(0, 1, 0);
       const tmp = new CANNON.Vec3();
       const BASE_LOCAL = new CANNON.Vec3(-PIN_COM_X, PIN_HM - PIN_COM_Y, 0);   // centre de la base, repère quille
+      const TOP_LOCAL = new CANNON.Vec3(-PIN_COM_X, PIN_HM - PIN_COM_Y, 0);
 
       // Forme physique de la quille : cylindre à sommet biseauté, centré sur son centre de gravité
       function makePinShape() {
