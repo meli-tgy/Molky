@@ -121,7 +121,7 @@
       const PIN_SEG = 14;              // facettes de la forme physique
       const STICK_R = 0.0295;
       const STICK_LEN = 0.225;
-      const STICK_MASS = 0.34;         // kg
+      const STICK_MASS = 1;         // kg
 
       // Centre de gravité de la quille biseautée, mesuré depuis le centre de la base.
       // Le biseau monte vers +x : le haut de la quille est en x = +r.
@@ -135,7 +135,7 @@
       const FALLEN_UP_Y = 0.5;         // quille tombée si inclinée de plus de 60°
 
       const world = new CANNON.World();
-      world.gravity.set(0, -9.82, 0);
+      world.gravity.set(0, -14, 0);
       world.broadphase = new CANNON.NaiveBroadphase();
       world.solver.iterations = 20;
       world.allowSleep = true;         // les objets immobiles "dorment" : pas de tremblement
@@ -166,7 +166,7 @@
 
       const UP = new CANNON.Vec3(0, 1, 0);
       const tmp = new CANNON.Vec3();
-      const BASE_LOCAL = new CANNON.Vec3(-PIN_COM_X, -PIN_COM_Y, 0);   // centre de la base, repère quille
+      const BASE_LOCAL = new CANNON.Vec3(-PIN_COM_X, PIN_HM - PIN_COM_Y, 0);   // centre de la base, repère quille
 
       // Forme physique de la quille : cylindre à sommet biseauté, centré sur son centre de gravité
       function makePinShape() {
@@ -287,6 +287,11 @@
         return { x: b.position.x + w.x, z: b.position.z + w.z };
       }
 
+      function tipPos(b){
+        const w = b.quaternion.vmult(TOP_LOCAL, tmp);
+        return {x: b.position.x + w.x, z: b.position.z +w.z};
+      }
+
       // Position / orientation d'une quille debout dont la base est en (x, z)
       function standingPose(x, z, yaw) {
         const quat = new CANNON.Quaternion();
@@ -310,7 +315,7 @@
       function planRaise(pins) {
         const MIN_D = 2 * PIN_R + 0.004;
         const pts = pins.map(p => {
-          const s = basePos(p.body);
+          const s = p.fallen ? tipPos(p.body) : basePos(p.body);
           return { x: s.x, z: s.z, movable: p.fallen };
         });
         for (let it = 0; it < 30; it++) {
@@ -349,7 +354,7 @@
         PIN_R, PIN_H, PIN_CUT, PIN_HM, PIN_COM_X, PIN_COM_Y, PIN_FACE_YAW,
         STICK_R, STICK_LEN,
         makePin, makeStick, setStickHeld, keepAwake, step,
-        isFallen, basePos, standingPose, isStill, planRaise, placeStanding
+        isFallen, basePos, tipPos, standingPose, isStill, planRaise, placeStanding
       };
     })();
   </script>
