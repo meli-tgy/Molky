@@ -300,6 +300,16 @@
         return upVector(b).y < FALLEN_UP_Y;
       }
 
+      // Quille pas tombée mais pas droite non plus : penchée (appuyée sur une autre quille)
+      // ou posée en hauteur sur une quille couchée. Elle sera redressée à sa place.
+      const LEAN_UP_Y = 0.98;          // plus de ~11° d'inclinaison
+      const _bw = new CANNON.Vec3();
+      function isLeaning(b) {
+        if (isFallen(b)) return false;
+        const baseY = b.position.y + b.quaternion.vmult(BASE_LOCAL, _bw).y;
+        return upVector(b).y < LEAN_UP_Y || baseY > 0.01;
+      }
+
       function basePos(b) {
         const w = b.quaternion.vmult(BASE_LOCAL, tmp);
         return { x: b.position.x + w.x, z: b.position.z + w.z };
@@ -332,7 +342,7 @@
         const MIN_D = 2 * PIN_R + 0.004;
         const pts = pins.map(p => {
           const s = p.fallen ? tipPos(p.body) : basePos(p.body);
-          return { x: s.x, z: s.z, movable: p.fallen };
+          return { x: s.x, z: s.z, movable: p.fallen || p.leaning };
         });
         for (let it = 0; it < 30; it++) {
           let moved = false;
@@ -369,7 +379,7 @@
         PIN_R, PIN_H, PIN_CUT, PIN_HM, PIN_COM_X, PIN_COM_Y, PIN_FACE_YAW,
         STICK_R, STICK_LEN,
         makePin, clearPins, makeStick, setStickHeld, keepAwake, step,
-        isFallen, basePos, tipPos, standingPose, isStill, planRaise, placeStanding
+        isFallen, isLeaning, basePos, tipPos, standingPose, isStill, planRaise, placeStanding
       };
     })();
   </script>
@@ -1581,7 +1591,10 @@
       settle() {
         this.timer = 0;
         PHYS.keepAwake(pins.map(p => p.body), false);
-        pins.forEach(p => { p.fallen = PHYS.isFallen(p.body); });
+        pins.forEach(p => {
+          p.fallen = PHYS.isFallen(p.body);
+          p.leaning = PHYS.isLeaning(p.body);   // appuyée sur une autre : ne compte pas, mais sera redressée
+        });
         const result = GAME.registerThrow(pins.filter(p => p.fallen));
         if (result) {
           this.state = 'ending';           // victoire ou défaite : menu de fin après un court délai
@@ -1598,7 +1611,8 @@
         const targets = PHYS.planRaise(pins);
         this.raise = [];
         pins.forEach((p, i) => {
-          if (!p.fallen) return;
+          // Tombée : relevée là où est son haut. Penchée : redressée sur sa base.
+          if (!p.fallen && !p.leaning) return;
           const x = targets[i].x, z = targets[i].z, yaw = PHYS.PIN_FACE_YAW;
           const pose = PHYS.standingPose(x, z, yaw);
           const to = new THREE.Vector3(pose.pos.x, pose.pos.y, pose.pos.z);
@@ -1626,6 +1640,7 @@
         this.raise.forEach(r => {
           PHYS.placeStanding(r.p.body, r.x, r.z, r.yaw);
           r.p.fallen = false;
+          r.p.leaning = false;
         });
         pins.forEach(p => p.body.wakeUp());
         this.startReturn();
